@@ -1,49 +1,19 @@
-import { useState } from 'react';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import SelectCustomer from './pages/SelectCustomer';
+import PlaceOrder from './pages/PlaceOrder';
+import AdminDashboard from './pages/AdminDashboard';
+import './index.css';
 
-function App() {
-  const [result, setResult] = useState('No request made yet.');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const testApiConnection = async () => {
-    setIsLoading(true);
-    setResult('Calling backend...');
-
-    try {
-      const response = await fetch('http://localhost:5000/api/fraud/ping');
-
-      if (!response.ok) {
-        setResult(`Request failed with status ${response.status}`);
-        return;
-      }
-
-      const data = await response.json();
-      setResult(`Success: ${data.message} at ${data.timestampUtc}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      setResult(`Connection error: ${message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+export default function App() {
   return (
-    <main className="page">
-      <section className="card">
-        <h1>Frontend to Backend Connectivity Test</h1>
-        <p>
-          Frontend: <strong>http://localhost:3000</strong>
-        </p>
-        <p>
-          Backend: <strong>http://localhost:5000</strong>
-        </p>
-        <button onClick={testApiConnection} disabled={isLoading}>
-          {isLoading ? 'Testing...' : 'Test API Call'}
-        </button>
-        <pre>{result}</pre>
-      </section>
-    </main>
+      <BrowserRouter>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<SelectCustomer />} />
+          <Route path="/customer/:id" element={<PlaceOrder />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
+      </BrowserRouter>
   );
 }
-
-export default App;
