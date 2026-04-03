@@ -47,10 +47,11 @@ project-root/
 
 ### Backend
 - **ASP.NET Core** (net10.0)
-- **Entity Framework Core** with SQLite provider
+- **Entity Framework Core** with **Npgsql.EntityFrameworkCore.PostgreSQL** provider (v10.x)
 - **OpenAPI/Swagger** enabled in development
-- **CORS** configured for frontend dev origin (localhost:3000)
-- Runs on **port 5000**
+- **CORS** configured to allow any origin (required for Vercel + Railway)
+- Runs on **port 5000** locally; reads `PORT` env var in production (Railway sets this to 8080)
+- JSON serialized as **snake_case** via `JsonNamingPolicy.SnakeCaseLower` to match frontend TypeScript interfaces
 
 ### Database
 - **SQLite** (`shop.db`) — development/operational database
@@ -199,11 +200,84 @@ SUPABASE_DB_URL=<connection_string> python import_sqlite_to_supabase.py
 
 ## Deployment
 
-**Target**: Vercel (frontend) + hosted API + Supabase
+### Stack
+- **Frontend** → Vercel
+- **Database** → Supabase (PostgreSQL)
+- **Backend** → ASP.NET Core (local or hosted separately)
 
-- Frontend: `npm run build` outputs to `dist/`, deploy to Vercel
-- Backend: ASP.NET Core — containerize or deploy as standalone executable; update CORS for production origin
-- Database: Run migration script once to seed Supabase from SQLite
+---
+
+### 1. Supabase Setup
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Go to **SQL Editor** and paste + run `database/supabase_schema.sql` to create all tables
+3. Run the migration script to seed data from SQLite:
+   ```bash
+   cd scripts
+   pip install -r requirements.txt
+   SUPABASE_DB_URL=<connection_string_from_supabase_dashboard> python import_sqlite_to_supabase.py
+   ```
+   - Connection string is found in Supabase → **Settings → Database → Connection string (URI mode)**
+
+---
+
+### 2. Vercel Deployment (Frontend)
+1. Push the repo to GitHub
+2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import the GitHub repo
+3. Set the **Root Directory** to `frontend`
+4. Vercel auto-detects Vite — build command is `npm run build`, output dir is `dist`
+5. Add any environment variables in Vercel's **Environment Variables** settings panel
+6. Deploy — Vercel provides a live URL
+
+> If the frontend calls a hosted API, update the base URL in `src/api/client.ts` before deploying.
+
+---
+
+### 3. Backend (Railway)
+Vercel does not support .NET — deploy the backend to **Railway** instead.
+
+1. Go to [railway.app](https://railway.app) and sign in with GitHub
+2. Click **New Project → Deploy from GitHub repo**
+3. Select your repo — if it's a fork or collaborated repo, grant Railway access via **GitHub → Settings → Applications → Authorized OAuth Apps → Railway → Grant org access**
+4. Once imported, go to **Settings → Source → Root Directory** and set it to `backend/455Chapter17.API`
+5. Trigger a redeploy — Railway uses Nixpacks and auto-detects .NET
+6. Go to **Settings → Networking → Generate Domain** and enter port **8080** (Railway sets `PORT=8080` by default)
+7. Go to **Variables** and add:
+   - `ConnectionStrings__Default` = `Host=...;Port=5432;Database=postgres;Username=...;Password=...` (Npgsql format — **not** the `postgresql://` URI format, which Npgsql does not support)
+8. Railway will redeploy automatically after adding variables
+
+**Verify** by hitting `https://your-app.up.railway.app/api/fraud/ping` — should return JSON.
+
+#### Key gotchas
+- Use the **connection pooler** URL from Supabase (Session mode, port 5432) — the direct `db.xxx.supabase.co` host fails DNS resolution on Windows and Railway
+- The Npgsql connection string must be key-value format: `Host=...;Port=...;Database=...;Username=...;Password=...`
+- Railway sets `PORT` env var automatically — `Program.cs` must read it: `var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";`
+- The `.csproj` requires `<InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>` or the Railway build fails with a CS9137 error
+- All EF Core packages and `Npgsql.EntityFrameworkCore.PostgreSQL` must be on the same major version (e.g., all 10.x)
+
+---
+
+### Environment Variables
+
+Never commit secrets. Set these in each platform's dashboard:
+
+**Railway (backend):**
+```
+ConnectionStrings__Default=Host=...pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.xxx;Password=...
+```
+
+**Vercel (frontend):**
+```
+VITE_API_URL=https://your-app.up.railway.app/api
+```
+
+**Local development** — `.env` in project root:
+```
+SUPABASE_DB_URL=postgresql://postgres.xxx:password@pooler.supabase.com:5432/postgres
+```
+
+The frontend reads `VITE_API_URL` via `import.meta.env.VITE_API_URL` with a fallback to `http://localhost:5000/api`.
+
+`.gitignore` should exclude: `.env`, `.env.*`, `appsettings.Development.json`
 
 ---
 
