@@ -66,7 +66,7 @@ public class ScoringController(AppDbContext db, IWebHostEnvironment env, ILogger
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
-            WorkingDirectory = repoRoot
+            WorkingDirectory = contentRoot
         };
         if (!string.IsNullOrWhiteSpace(pythonVersionSelector))
         {
