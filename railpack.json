@@ -5,6 +5,7 @@
   },
   "build": {
     "cmds": [
+      "echo 'Starting build v2'",
       "dotnet restore backend/455Chapter17.API/455chapter17.API.csproj",
       "dotnet publish backend/455Chapter17.API/455chapter17.API.csproj --no-restore -c Release -o out",
       "python3.12 -m venv out/venv",
