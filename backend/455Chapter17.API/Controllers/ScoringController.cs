@@ -32,7 +32,13 @@ public class ScoringController(AppDbContext db, IWebHostEnvironment env, ILogger
 
         if (string.IsNullOrWhiteSpace(pythonExecutable))
         {
-            if (OperatingSystem.IsWindows())
+            // Prefer the bundled venv created during Railway build
+            var venvPython = Path.Combine(contentRoot, "venv", "bin", "python");
+            if (System.IO.File.Exists(venvPython))
+            {
+                pythonExecutable = venvPython;
+            }
+            else if (OperatingSystem.IsWindows())
             {
                 pythonExecutable = "py";
                 pythonVersionSelector ??= "-3.12";
