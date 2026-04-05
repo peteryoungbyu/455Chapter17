@@ -1,9 +1,8 @@
 {
   "packages": {
-    "python": "3.12",
-    "pip": "latest"
+    "python": "3.12"
   },
   "deploy": {
-    "startCommand": "pip install --quiet psycopg[binary]==3.2.12 pandas==2.2.3 SQLAlchemy==2.0.37 scikit-learn==1.6.1 joblib==1.4.2 numpy==2.2.2 && ASPNETCORE_URLS=http://0.0.0.0:${PORT:-3000} ./out/455chapter17.API"
+    "startCommand": "python3 -m pip install --quiet 'psycopg[binary]==3.2.12' pandas==2.2.3 SQLAlchemy==2.0.37 scikit-learn==1.6.1 joblib==1.4.2 numpy==2.2.2 && ASPNETCORE_URLS=http://0.0.0.0:${PORT:-3000} ./out/455chapter17.API"
   }
 }
