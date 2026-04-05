@@ -9,14 +9,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\..\scripts\run_fraud_scoring.py" CopyToPublishDirectory="PreserveNewest">
-      <Link>scripts\run_fraud_scoring.py</Link>
+    <Content Include="..\..\scripts\run_fraud_scoring.py">
+      <Link>scripts/run_fraud_scoring.py</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="..\..\scripts\requirements.txt" CopyToPublishDirectory="PreserveNewest">
-      <Link>scripts\requirements.txt</Link>
+    <Content Include="..\..\scripts\requirements.txt">
+      <Link>scripts/requirements.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="..\..\crispdm-pipeline-model\fraud_model.sav" CopyToPublishDirectory="PreserveNewest">
-      <Link>crispdm-pipeline-model\fraud_model.sav</Link>
+    <Content Include="..\..\crispdm-pipeline-model\fraud_model.sav">
+      <Link>crispdm-pipeline-model/fraud_model.sav</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 
