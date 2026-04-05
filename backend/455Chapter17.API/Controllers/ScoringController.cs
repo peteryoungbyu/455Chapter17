@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using _455chapter17.API.Data;
@@ -7,40 +9,89 @@ namespace _455chapter17.API.Controllers;
 
 [ApiController]
 [Route("api/scoring")]
-public class ScoringController(AppDbContext db) : ControllerBase
+public class ScoringController(AppDbContext db, IWebHostEnvironment env, ILogger<ScoringController> logger) : ControllerBase
 {
     [HttpPost("run")]
     public async Task<IActionResult> RunScoring()
     {
-        var orders = await db.Orders.ToListAsync();
-        var scoredAt = DateTime.UtcNow;
+        var repoRoot = Path.GetFullPath(Path.Combine(env.ContentRootPath, "..", ".."));
+        var scriptPath = Path.Combine(repoRoot, "scripts", "run_fraud_scoring.py");
+        var modelPath = Environment.GetEnvironmentVariable("FRAUD_MODEL_PATH")
+            ?? Path.Combine(repoRoot, "crispdm-pipeline-model", "fraud_model.sav");
+        var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE");
+        var pythonVersionSelector = Environment.GetEnvironmentVariable("PYTHON_VERSION_SELECTOR");
 
-        foreach (var order in orders)
+        if (string.IsNullOrWhiteSpace(pythonExecutable))
         {
-            var existing = await db.DeliveryScores.FindAsync(order.OrderId);
-            var probability = Math.Round(order.RiskScore / 100m, 4);
-
-            if (existing is null)
+            if (OperatingSystem.IsWindows())
             {
-                db.DeliveryScores.Add(new DeliveryScore
-                {
-                    OrderId = order.OrderId,
-                    LateDeliveryProbability = probability,
-                    ScoredAt = scoredAt,
-                    ScoreSource = "risk_score",
-                    ModelVersion = "v1.0"
-                });
+                pythonExecutable = "py";
+                pythonVersionSelector ??= "-3.12";
             }
             else
             {
-                existing.LateDeliveryProbability = probability;
-                existing.ScoredAt = scoredAt;
+                pythonExecutable = "python3";
             }
         }
 
-        await db.SaveChangesAsync();
+        if (!System.IO.File.Exists(scriptPath))
+        {
+            logger.LogError("Scoring script not found at {ScriptPath}", scriptPath);
+            return StatusCode(500, new { message = "Scoring script not found." });
+        }
 
-        return Ok(new { message = "Scoring complete.", scored = orders.Count });
+        if (!System.IO.File.Exists(modelPath))
+        {
+            logger.LogError("Model file not found at {ModelPath}", modelPath);
+            return StatusCode(500, new { message = "Model file not found." });
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = pythonExecutable,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = repoRoot
+        };
+        if (!string.IsNullOrWhiteSpace(pythonVersionSelector))
+        {
+            startInfo.ArgumentList.Add(pythonVersionSelector);
+        }
+        startInfo.ArgumentList.Add(scriptPath);
+        startInfo.ArgumentList.Add("--model-path");
+        startInfo.ArgumentList.Add(modelPath);
+
+        using var process = Process.Start(startInfo);
+        if (process is null)
+        {
+            logger.LogError("Failed to start scoring process using executable {PythonExecutable}", pythonExecutable);
+            return StatusCode(500, new { message = "Failed to start scoring process." });
+        }
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        await process.WaitForExitAsync(HttpContext.RequestAborted);
+
+        var stdout = await stdoutTask;
+        var stderr = await stderrTask;
+
+        if (process.ExitCode != 0)
+        {
+            logger.LogError("Scoring process failed with exit code {ExitCode}. stderr: {Stderr}", process.ExitCode, stderr);
+            return StatusCode(500, new
+            {
+                message = "Scoring process failed.",
+                stderr,
+                stdout
+            });
+        }
+
+        var scored = ParseScoredCount(stdout);
+
+        return Ok(new { message = "Scoring complete.", scored });
     }
 
     [HttpGet("queue")]
@@ -57,12 +108,49 @@ public class ScoringController(AppDbContext db) : ControllerBase
                 CustomerName = ds.Order != null && ds.Order.Customer != null
                     ? ds.Order.Customer.FullName : "",
                 OrderTotal = ds.Order != null ? ds.Order.OrderTotal : 0,
-                RiskScore = ds.Order != null ? ds.Order.RiskScore : 0,
-                FraudProbability = ds.LateDeliveryProbability,
+                RiskScore = ds.Order != null ? NormalizeProbability(ds.Order.RiskScore) : 0,
+                FraudProbability = NormalizeProbability(ds.LateDeliveryProbability),
                 ScoredAt = ds.ScoredAt
             })
             .ToListAsync();
 
         return Ok(queue);
+    }
+
+    private static decimal NormalizeProbability(decimal rawValue)
+    {
+        // Legacy source data stores risk scores on a 0-100 scale, while UI expects 0-1.
+        var normalized = rawValue > 1m ? rawValue / 100m : rawValue;
+        var clamped = Math.Clamp(normalized, 0m, 1m);
+        return Math.Round(clamped, 4);
+    }
+
+    private static int ParseScoredCount(string stdout)
+    {
+        if (string.IsNullOrWhiteSpace(stdout))
+        {
+            return 0;
+        }
+
+        var lines = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        for (var index = lines.Length - 1; index >= 0; index--)
+        {
+            try
+            {
+                using var json = JsonDocument.Parse(lines[index]);
+                if (json.RootElement.TryGetProperty("scored", out var scoredElement)
+                    && scoredElement.ValueKind == JsonValueKind.Number
+                    && scoredElement.TryGetInt32(out var scored))
+                {
+                    return scored;
+                }
+            }
+            catch (JsonException)
+            {
+                // Ignore non-JSON lines and continue scanning.
+            }
+        }
+
+        return 0;
     }
 }

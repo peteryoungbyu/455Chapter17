@@ -25,7 +25,7 @@ public class OrdersController(AppDbContext db) : ControllerBase
                 o.PaymentMethod,
                 o.DeviceType,
                 o.OrderTotal,
-                o.RiskScore,
+                RiskScore = NormalizeProbability(o.RiskScore),
                 o.IsFraud
             })
             .ToListAsync();
@@ -78,7 +78,7 @@ public class OrdersController(AppDbContext db) : ControllerBase
             ShippingFee = shippingFee,
             TaxAmount = tax,
             OrderTotal = total,
-            RiskScore = 0.5m,
+            RiskScore = 50.0m,
             IsFraud = false,
             OrderItems = items
         };
@@ -94,9 +94,15 @@ public class OrdersController(AppDbContext db) : ControllerBase
             order.PaymentMethod,
             order.DeviceType,
             order.OrderTotal,
-            order.RiskScore,
+            RiskScore = NormalizeProbability(order.RiskScore),
             order.IsFraud
         });
+    }
+
+    private static decimal NormalizeProbability(decimal rawValue)
+    {
+        var normalized = rawValue > 1m ? rawValue / 100m : rawValue;
+        return Math.Round(Math.Clamp(normalized, 0m, 1m), 4);
     }
 }
 

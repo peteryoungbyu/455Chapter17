@@ -265,7 +265,21 @@ def unistats(df, viz=True):
     skew_val = '-'
     kurt_val = '-'
 
-    if pd.api.types.is_numeric_dtype(df[col]):
+    if pd.api.types.is_bool_dtype(df[col]):
+      series_num = df[col].astype(int)
+      min_val = int(series_num.min())
+      max_val = int(series_num.max())
+      q1 = round(series_num.quantile(0.25), 2)
+      q2 = round(series_num.quantile(0.50), 2)
+      q3 = round(series_num.quantile(0.75), 2)
+      mean_val = round(series_num.mean(), 2)
+      median_val = round(series_num.median(), 2)
+      mode_series = series_num.mode()
+      mode_val = int(mode_series.values[0]) if len(mode_series) > 0 else '-'
+      std_val = round(series_num.std(), 2)
+      skew_val = round(series_num.skew(), 2)
+      kurt_val = round(series_num.kurt(), 2)
+    elif pd.api.types.is_numeric_dtype(df[col]):
       min_val = round(df[col].min(), 2)
       max_val = round(df[col].max(), 2)
       q1 = round(df[col].quantile(0.25), 2)
