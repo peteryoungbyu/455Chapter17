@@ -1,10 +1,12 @@
 {
   "packages": {
+    "dotnet": "10.0",
     "python": "3.12"
   },
   "build": {
     "cmds": [
-      "dotnet publish backend/455Chapter17.API/455chapter17.API.csproj -c Release -o out",
+      "dotnet restore backend/455Chapter17.API/455chapter17.API.csproj",
+      "dotnet publish backend/455Chapter17.API/455chapter17.API.csproj --no-restore -c Release -o out",
       "python3.12 -m venv out/venv",
       "out/venv/bin/pip install --quiet 'psycopg[binary]==3.2.12' pandas==2.2.3 SQLAlchemy==2.0.37 scikit-learn==1.6.1 joblib==1.4.2 numpy==2.2.2",
       "cp -r scripts out/scripts",
