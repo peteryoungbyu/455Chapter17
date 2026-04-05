@@ -9,36 +9,42 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Railway copies the full repo into /app and sets source root to backend/455Chapter17.API,
-         so the .csproj itself lives at /app/455chapter17.API.csproj and the repo root IS /app.
-         On local dev the .csproj is at backend/455Chapter17.API/ so ..\..\scripts resolves correctly.
-         We include both paths and use Condition so whichever exists gets copied. -->
-    <Content Include="..\..\scripts\run_fraud_scoring.py" Condition="Exists('..\..\scripts\run_fraud_scoring.py')">
+    <!-- MSBuildProjectDirectory is the directory containing this .csproj file.
+         On Railway: /app  (repo root, because Railway flattens the source root)
+         On local dev: backend/455Chapter17.API  (so ../.. = repo root)
+         We try both locations; whichever Exists() wins. -->
+    <Content Include="$(MSBuildProjectDirectory)/scripts/run_fraud_scoring.py"
+             Condition="Exists('$(MSBuildProjectDirectory)/scripts/run_fraud_scoring.py')">
       <Link>scripts/run_fraud_scoring.py</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="scripts\run_fraud_scoring.py" Condition="Exists('scripts\run_fraud_scoring.py') And !Exists('..\..\scripts\run_fraud_scoring.py')">
+    <Content Include="$(MSBuildProjectDirectory)/../../scripts/run_fraud_scoring.py"
+             Condition="Exists('$(MSBuildProjectDirectory)/../../scripts/run_fraud_scoring.py')">
       <Link>scripts/run_fraud_scoring.py</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="..\..\scripts\requirements.txt" Condition="Exists('..\..\scripts\requirements.txt')">
+    <Content Include="$(MSBuildProjectDirectory)/scripts/requirements.txt"
+             Condition="Exists('$(MSBuildProjectDirectory)/scripts/requirements.txt')">
       <Link>scripts/requirements.txt</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="scripts\requirements.txt" Condition="Exists('scripts\requirements.txt') And !Exists('..\..\scripts\requirements.txt')">
+    <Content Include="$(MSBuildProjectDirectory)/../../scripts/requirements.txt"
+             Condition="Exists('$(MSBuildProjectDirectory)/../../scripts/requirements.txt')">
       <Link>scripts/requirements.txt</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="..\..\crispdm-pipeline-model\fraud_model.sav" Condition="Exists('..\..\crispdm-pipeline-model\fraud_model.sav')">
+    <Content Include="$(MSBuildProjectDirectory)/crispdm-pipeline-model/fraud_model.sav"
+             Condition="Exists('$(MSBuildProjectDirectory)/crispdm-pipeline-model/fraud_model.sav')">
       <Link>crispdm-pipeline-model/fraud_model.sav</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="crispdm-pipeline-model\fraud_model.sav" Condition="Exists('crispdm-pipeline-model\fraud_model.sav') And !Exists('..\..\crispdm-pipeline-model\fraud_model.sav')">
+    <Content Include="$(MSBuildProjectDirectory)/../../crispdm-pipeline-model/fraud_model.sav"
+             Condition="Exists('$(MSBuildProjectDirectory)/../../crispdm-pipeline-model/fraud_model.sav')">
       <Link>crispdm-pipeline-model/fraud_model.sav</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
