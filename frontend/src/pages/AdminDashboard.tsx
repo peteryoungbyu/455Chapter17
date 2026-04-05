@@ -160,7 +160,7 @@ export default function AdminDashboard() {
       setQueue(q);
     } catch {
       setOrders(MOCK_ORDERS);
-      setQueue([]);
+      setQueue(MOCK_QUEUE);
     } finally {
       setLoading(false);
     }
